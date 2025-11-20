@@ -254,10 +254,8 @@ async function loadAuditLog() {
     updateAuditCount(logs.length);
 }
 
-// Cargar categorías en selects
+// Cargar categorías en selects - FIXED VERSION
 async function loadCategoriesSelect() {
-    addConsoleEntry('📝 Actualizando selects de categorías...', 'system');
-    
     const categories = await safeDbOperation(() => db.getAllCategories(), 'cargar categorías para selects');
     if (!categories) return;
     
@@ -268,11 +266,19 @@ async function loadCategoriesSelect() {
     
     selects.forEach(select => {
         if (select) {
+            // IMPORTANTE: Guardar valor actual ANTES de limpiar
             const currentValue = select.value;
-            select.innerHTML = select.id === 'task-category' 
-                ? '<option value="">Sin categoría</option>' 
-                : '<option value="">-- Seleccionar --</option>';
             
+            // Limpiar completamente
+            select.innerHTML = '';
+            
+            // Opción por defecto
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = select.id === 'task-category' ? 'Sin categoría' : '-- Seleccionar --';
+            select.appendChild(defaultOption);
+            
+            // Agregar categorías
             categories.forEach(cat => {
                 const option = document.createElement('option');
                 option.value = cat.id;
@@ -280,11 +286,12 @@ async function loadCategoriesSelect() {
                 select.appendChild(option);
             });
             
-            select.value = currentValue;
+            // Restaurar valor solo si existe
+            if (currentValue && categories.find(c => c.id == currentValue)) {
+                select.value = currentValue;
+            }
         }
     });
-    
-    addConsoleEntry('✅ Selects de categorías actualizados', 'success');
 }
 
 // ==================== OPERACIONES CRUD REALES ====================
@@ -424,7 +431,7 @@ async function deleteTask(id) {
     }
 }
 
-// Crear categoría REAL
+// Crear categoría REAL - FIXED VERSION
 document.getElementById('category-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     
@@ -446,9 +453,12 @@ document.getElementById('category-form').addEventListener('submit', async functi
         await db.db.query('INSERT INTO categories (name) VALUES (?)', [name]);
         addConsoleEntry(`✅ Categoría "${name}" creada correctamente`, 'success');
         
+        // FIX: Resetear formulario y enfocar campo
         this.reset();
+        document.getElementById('category-name').focus(); // SOLUCIÓN APLICADA
+        
         await loadCategories();
-        await loadCategoriesSelect();
+        await loadCategoriesSelect(); // FIXED VERSION
         
     } catch (error) {
         if (error.code === 'ER_DUP_ENTRY') {

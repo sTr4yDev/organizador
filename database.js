@@ -1,5 +1,5 @@
 /**
- * DATABASE.JS - Gestión de Base de Datos MySQL CON LOGS MEJORADOS
+ * DATABASE.JS - Gestión de Base de Datos MySQL CON LOGS LIMPIOS
  * 
  * NAMING CONVENTIONS:
  * - Tablas: snake_case plural (tasks, categories, audit_log)
@@ -19,6 +19,9 @@ const config = require('./config.js');
 
 class DatabaseManager {
   constructor() {
+    // SISTEMA DE LOGS LIMPIO - Solo errores por defecto
+    this.debugMode = false; // Cambiar a true para debug detallado
+    
     console.log('\n🔧 ========== INICIANDO DATABASE MANAGER ==========');
     console.log('📊 Configuración MySQL:', {
       host: config.host,
@@ -43,9 +46,34 @@ class DatabaseManager {
         console.log('🚀 Base de datos completamente inicializada y lista');
       })
       .catch(error => {
-        console.error('💥 ERROR CRÍTICO EN CONEXIÓN:', error.message);
-        console.error('🔧 Detalles del error:', error);
+        this.logError('INICIALIZACIÓN', error);
       });
+  }
+
+  /**
+   * SISTEMA DE LOGS LIMPIO
+   */
+  logSQL(operation, sql, params = []) {
+    if (!this.debugMode) return; // Solo log si está en modo debug
+    
+    console.log(`\n🔵 OPERACIÓN: ${operation}`);
+    console.log(`📝 SQL: ${sql.replace(/\s+/g, ' ').trim()}`);
+    if (params.length > 0) {
+      console.log(`📊 PARAMS:`, params);
+    }
+  }
+
+  logError(operation, error) {
+    console.error(`\n❌ ERROR en ${operation}`);
+    console.error(`💥 Mensaje: ${error.message}`);
+    if (error.code) console.error(`🔧 Código: ${error.code}`);
+    if (error.errno) console.error(`🔧 Número: ${error.errno}`);
+    if (error.sqlState) console.error(`🔧 SQL State: ${error.sqlState}`);
+  }
+
+  logSuccess(operation, details = '') {
+    if (!this.debugMode) return;
+    console.log(`✅ ${operation} ${details}`);
   }
 
   /**
@@ -56,11 +84,11 @@ class DatabaseManager {
       console.log('🧪 Probando conexión a MySQL...');
       
       const connection = await this.pool.promise().getConnection();
-      console.log('✅ Conexión obtenida del pool');
+      this.logSuccess('CONEXIÓN', 'obtenida del pool');
       
       // Ejecutar un query simple
       const [rows] = await connection.query('SELECT 1 + 1 AS result, NOW() as time, DATABASE() as db, USER() as user');
-      console.log('📊 Query de prueba ejecutado:', rows[0]);
+      this.logSQL('TEST QUERY', 'SELECT 1 + 1', []);
       
       // Verificar base de datos
       const [dbRows] = await connection.query('SELECT DATABASE() as current_db');
@@ -76,14 +104,11 @@ class DatabaseManager {
       console.log('📋 Tablas existentes:', tables.map(t => Object.values(t)[0]));
       
       connection.release();
-      console.log('✅ Conexión liberada - Prueba exitosa');
+      this.logSuccess('CONEXIÓN', 'liberada - Prueba exitosa');
       return true;
       
     } catch (error) {
-      console.error('❌ ERROR en testConnection:', error.message);
-      console.error('🔧 Código de error:', error.code);
-      console.error('🔧 Número de error:', error.errno);
-      console.error('🔧 SQL State:', error.sqlState);
+      this.logError('TEST_CONNECTION', error);
       
       if (error.code === 'ER_ACCESS_DENIED_ERROR') {
         console.log('\n💡 SOLUCIÓN: Revisa usuario y contraseña en config.js');
@@ -95,17 +120,6 @@ class DatabaseManager {
       }
       
       throw error;
-    }
-  }
-
-  /**
-   * LOG: Función para mostrar logs visuales de SQL
-   */
-  logSQL(operation, sql, params = []) {
-    console.log(`\n🔵 OPERACIÓN: ${operation}`);
-    console.log(`📝 SQL: ${sql.replace(/\s+/g, ' ').trim()}`);
-    if (params.length > 0) {
-      console.log(`📊 PARAMS:`, params);
     }
   }
 
@@ -181,7 +195,7 @@ class DatabaseManager {
       console.log('   - Índices y foreign keys configurados');
       
     } catch (error) {
-      console.error('❌ Error al inicializar BD:', error.message);
+      this.logError('INIT_DATABASE', error);
       throw error;
     }
   }
@@ -292,13 +306,13 @@ class DatabaseManager {
       try {
         const [result] = await this.db.query('INSERT IGNORE INTO categories (name) VALUES (?)', [cat]);
         if (result.affectedRows > 0) {
-          console.log(`✅ Categoría insertada: ${cat}`);
+          this.logSuccess('CATEGORÍA INSERTADA', cat);
           inserted++;
         } else {
-          console.log(`ℹ️  Categoría ya existía: ${cat}`);
+          this.logSuccess('CATEGORÍA EXISTENTE', cat);
         }
       } catch (error) {
-        console.error(`❌ Error insertando categoría ${cat}:`, error.message);
+        this.logError(`INSERT_CATEGORY_${cat}`, error);
       }
     }
     
@@ -319,12 +333,10 @@ class DatabaseManager {
         [title, description, categoryId, priority]
       );
       
-      console.log(`✅ Tarea creada con ID: ${result.insertId}`);
-      console.log(`🔔 TRIGGER ejecutado: contador de categoría actualizado`);
-      
+      this.logSuccess('TAREA CREADA', `ID: ${result.insertId}`);
       return result.insertId;
     } catch (error) {
-      console.error('❌ Error creando tarea:', error.message);
+      this.logError('CREATE_TASK', error);
       throw error;
     }
   }
@@ -343,10 +355,10 @@ class DatabaseManager {
         ORDER BY t.created_at DESC
       `);
       
-      console.log(`✅ ${rows.length} tareas encontradas`);
+      this.logSuccess('TAREAS OBTENIDAS', `Total: ${rows.length}`);
       return rows;
     } catch (error) {
-      console.error('❌ Error obteniendo tareas:', error.message);
+      this.logError('GET_ALL_TASKS', error);
       throw error;
     }
   }
@@ -363,10 +375,10 @@ class DatabaseManager {
         [categoryId]
       );
       
-      console.log(`✅ ${rows.length} tareas encontradas para categoría ${categoryId}`);
+      this.logSuccess('TAREAS POR CATEGORÍA', `Categoría ${categoryId}: ${rows.length} tareas`);
       return rows;
     } catch (error) {
-      console.error('❌ Error obteniendo tareas por categoría:', error.message);
+      this.logError('GET_TASKS_BY_CATEGORY', error);
       throw error;
     }
   }
@@ -383,10 +395,10 @@ class DatabaseManager {
         [title, description, categoryId, priority, id]
       );
       
-      console.log(`✅ Tarea ${id} actualizada - Filas afectadas: ${result.affectedRows}`);
+      this.logSuccess('TAREA ACTUALIZADA', `ID: ${id}, Filas: ${result.affectedRows}`);
       return result.affectedRows;
     } catch (error) {
-      console.error('❌ Error actualizando tarea:', error.message);
+      this.logError('UPDATE_TASK', error);
       throw error;
     }
   }
@@ -403,12 +415,10 @@ class DatabaseManager {
         [id]
       );
       
-      console.log(`✅ Tarea ${id} marcada como completada`);
-      console.log(`🔔 TRIGGER ejecutado: registro en audit_log`);
-      
+      this.logSuccess('TAREA COMPLETADA', `ID: ${id}`);
       return result.affectedRows;
     } catch (error) {
-      console.error('❌ Error completando tarea:', error.message);
+      this.logError('COMPLETE_TASK', error);
       throw error;
     }
   }
@@ -422,12 +432,10 @@ class DatabaseManager {
     try {
       const [result] = await this.db.query('DELETE FROM tasks WHERE id = ?', [id]);
       
-      console.log(`✅ Tarea ${id} eliminada - Filas afectadas: ${result.affectedRows}`);
-      console.log(`🔔 TRIGGER ejecutado: contador de categoría decrementado`);
-      
+      this.logSuccess('TAREA ELIMINADA', `ID: ${id}, Filas: ${result.affectedRows}`);
       return result.affectedRows;
     } catch (error) {
-      console.error('❌ Error eliminando tarea:', error.message);
+      this.logError('DELETE_TASK', error);
       throw error;
     }
   }
@@ -444,7 +452,7 @@ class DatabaseManager {
     try {
       // Iniciar transacción
       await connection.beginTransaction();
-      console.log('📍 START TRANSACTION');
+      this.logSuccess('TRANSACCIÓN', 'START TRANSACTION');
       
       // 1. Obtener número de tareas
       const [countResult] = await connection.query(
@@ -458,7 +466,7 @@ class DatabaseManager {
         'DELETE FROM tasks WHERE category_id = ?',
         [categoryId]
       );
-      console.log(`✅ ${deleteTasksResult.affectedRows} tareas eliminadas`);
+      this.logSuccess('ELIMINAR TAREAS', `${deleteTasksResult.affectedRows} tareas`);
       
       // 3. Eliminar la categoría
       const [deleteCatResult] = await connection.query(
@@ -470,25 +478,25 @@ class DatabaseManager {
         throw new Error('Categoría no existe');
       }
       
-      console.log(`✅ Categoría ${categoryId} eliminada`);
+      this.logSuccess('ELIMINAR CATEGORÍA', `ID: ${categoryId}`);
       
       // Confirmar transacción
       await connection.commit();
-      console.log('✅ COMMIT: Transacción completada exitosamente\n');
+      this.logSuccess('TRANSACCIÓN', 'COMMIT completado');
       
       return true;
       
     } catch (error) {
       // Si hay error, hacer ROLLBACK
       await connection.rollback();
+      this.logError('TRANSACCIÓN', error);
       console.error('❌ ROLLBACK: Transacción cancelada');
-      console.error('❌ Error:', error.message);
       
       return false;
       
     } finally {
       connection.release();
-      console.log('🔓 Conexión liberada');
+      this.logSuccess('CONEXIÓN', 'liberada');
     }
   }
 
@@ -500,10 +508,10 @@ class DatabaseManager {
     
     try {
       const [rows] = await this.db.query('SELECT * FROM categories ORDER BY name');
-      console.log(`✅ ${rows.length} categorías encontradas`);
+      this.logSuccess('CATEGORÍAS OBTENIDAS', `Total: ${rows.length}`);
       return rows;
     } catch (error) {
-      console.error('❌ Error obteniendo categorías:', error.message);
+      this.logError('GET_ALL_CATEGORIES', error);
       throw error;
     }
   }
@@ -519,10 +527,10 @@ class DatabaseManager {
         'SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT ?',
         [limit]
       );
-      console.log(`✅ ${rows.length} registros de auditoría encontrados`);
+      this.logSuccess('AUDITORÍA OBTENIDA', `Registros: ${rows.length}`);
       return rows;
     } catch (error) {
-      console.error('❌ Error obteniendo auditoría:', error.message);
+      this.logError('GET_AUDIT_LOG', error);
       throw error;
     }
   }
@@ -535,9 +543,17 @@ class DatabaseManager {
       const [result] = await this.db.query('SELECT 1 as status');
       return result[0].status === 1;
     } catch (error) {
-      console.error('❌ Health check falló:', error.message);
+      this.logError('HEALTH_CHECK', error);
       return false;
     }
+  }
+
+  /**
+   * DEBUG: Activar/desactivar modo debug
+   */
+  setDebugMode(enabled) {
+    this.debugMode = enabled;
+    console.log(`🔧 Modo debug: ${enabled ? 'ACTIVADO' : 'DESACTIVADO'}`);
   }
 
   /**

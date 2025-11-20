@@ -6,7 +6,7 @@ const path = require("path");
 // CONFIGURACIÓN
 // ===============================
 const USER = "sTr4yDev";
-const REPO = "speakLexi2.0";
+const REPO = "organizador";
 const BRANCH = "main";
 const TOKEN = ""; // opcional
 

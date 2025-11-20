@@ -1,0 +1,26 @@
+{
+  "name": "organizador-tareas",
+  "version": "1.0.0",
+  "description": "Organizador de tareas con Electron y MySQL - Demo CRUD, Triggers y Transacciones",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "electron",
+    "mysql",
+    "crud",
+    "database",
+    "tareas"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.13.2",
+    "electron": "^39.2.3",
+    "electron-is-dev": "^3.0.1",
+    "mysql2": "^3.15.3"
+  }
+}

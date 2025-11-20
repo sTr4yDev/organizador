@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organizador de Tareas - Electron + MySQL</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header Mejorado con Estado de BD -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="header-title">
+                    <h1>📋 Organizador de Tareas</h1>
+                    <p class="subtitle">Electron + MySQL - CRUD, Triggers & Transacciones</p>
+                </div>
+                <div class="header-status" id="database-status">
+                    <div class="status-indicator connecting">
+                        <div class="status-dot"></div>
+                        <span>Conectando a MySQL...</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation Menu Mejorado -->
+        <nav class="main-nav">
+            <div class="nav-container">
+                <button class="menu-btn active" data-section="tasks">
+                    <span class="menu-icon">📝</span>
+                    <span class="menu-text">Tareas</span>
+                    <span class="menu-badge" id="tasks-count">0</span>
+                </button>
+                <button class="menu-btn" data-section="categories">
+                    <span class="menu-icon">🏷️</span>
+                    <span class="menu-text">Categorías</span>
+                    <span class="menu-badge" id="categories-count">0</span>
+                </button>
+                <button class="menu-btn" data-section="audit">
+                    <span class="menu-icon">📊</span>
+                    <span class="menu-text">Auditoría</span>
+                    <span class="menu-badge" id="audit-count">0</span>
+                </button>
+                <button class="menu-btn" data-section="demo">
+                    <span class="menu-icon">⚡</span>
+                    <span class="menu-text">Demo SQL</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- ========== SECCIÓN TAREAS MEJORADA ========== -->
+            <section id="section-tasks" class="content-section active">
+                <div class="section-header">
+                    <h2>🎯 Gestión de Tareas</h2>
+                    <p>CRUD completo con triggers automáticos en MySQL</p>
+                </div>
+
+                <div class="content-grid">
+                    <!-- Formulario Tareas -->
+                    <div class="form-container card">
+                        <form id="task-form" class="task-form">
+                            <h3 id="form-title">➕ Nueva Tarea</h3>
+                            <input type="hidden" id="task-id">
+                            
+                            <div class="form-group">
+                                <label for="task-title">Título *</label>
+                                <input type="text" id="task-title" placeholder="¿Qué necesitas hacer?" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="task-description">Descripción</label>
+                                <textarea id="task-description" placeholder="Detalles de la tarea..." rows="3"></textarea>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="task-category">Categoría</label>
+                                    <select id="task-category">
+                                        <option value="">Sin categoría</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="task-priority">Prioridad</label>
+                                    <select id="task-priority">
+                                        <option value="baja">🟢 Baja</option>
+                                        <option value="media" selected>🟡 Media</option>
+                                        <option value="alta">🔴 Alta</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">
+                                    💾 Guardar Tarea
+                                </button>
+                                <button type="button" id="cancel-edit" class="btn btn-secondary" style="display: none;">
+                                    ❌ Cancelar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Estadísticas Rápidas -->
+                    <div class="stats-container card">
+                        <h3>📈 Estadísticas</h3>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="stat-value" id="total-tasks">0</div>
+                                <div class="stat-label">Total Tareas</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="completed-tasks">0</div>
+                                <div class="stat-label">Completadas</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="pending-tasks">0</div>
+                                <div class="stat-label">Pendientes</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="high-priority">0</div>
+                                <div class="stat-label">Alta Prioridad</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lista de Tareas -->
+                <div class="tasks-container card">
+                    <div class="section-toolbar">
+                        <h3>📋 Lista de Tareas</h3>
+                        <div class="filter-controls">
+                            <select id="filter-priority" class="filter-select">
+                                <option value="">Todas las prioridades</option>
+                                <option value="alta">🔴 Alta</option>
+                                <option value="media">🟡 Media</option>
+                                <option value="baja">🟢 Baja</option>
+                            </select>
+                            <select id="filter-status" class="filter-select">
+                                <option value="">Todas las tareas</option>
+                                <option value="pending">⏳ Pendientes</option>
+                                <option value="completed">✅ Completadas</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="tasks-list" class="tasks-list">
+                        <div class="empty-state">
+                            <p>No hay tareas. ¡Crea tu primera tarea!</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========== SECCIÓN CATEGORÍAS MEJORADA ========== -->
+            <section id="section-categories" class="content-section">
+                <div class="section-header">
+                    <h2>🏷️ Gestión de Categorías</h2>
+                    <p>Administra tus categorías con contadores automáticos vía triggers</p>
+                </div>
+
+                <div class="content-grid">
+                    <!-- Formulario Categorías -->
+                    <div class="form-container card">
+                        <form id="category-form" class="category-form">
+                            <h3>➕ Nueva Categoría</h3>
+                            <div class="form-group">
+                                <label for="category-name">Nombre de Categoría *</label>
+                                <input type="text" id="category-name" placeholder="Ej: Trabajo, Personal, Estudio..." required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                💾 Crear Categoría
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Info de Triggers -->
+                    <div class="info-card card">
+                        <h4>🔔 Trigger Activo</h4>
+                        <p><code>trg_tasks_after_insert/update/delete</code></p>
+                        <p class="info-text">Los contadores se actualizan automáticamente cuando:</p>
+                        <ul class="info-list">
+                            <li>✅ Creas una tarea en una categoría</li>
+                            <li>✅ Eliminas una tarea de una categoría</li>
+                            <li>✅ Cambias la categoría de una tarea</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Lista de Categorías -->
+                <div class="categories-container card">
+                    <h3>📂 Categorías Existentes</h3>
+                    <div id="categories-list" class="categories-list">
+                        <div class="empty-state">
+                            <p>No hay categorías. ¡Crea la primera!</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========== SECCIÓN AUDITORÍA MEJORADA ========== -->
+            <section id="section-audit" class="content-section">
+                <div class="section-header">
+                    <h2>📊 Log de Auditoría</h2>
+                    <p>Registro automático de todas las operaciones mediante triggers</p>
+                </div>
+
+                <div class="content-grid">
+                    <div class="info-card card">
+                        <h4>🔔 Triggers Activos</h4>
+                        <div class="triggers-list">
+                            <div class="trigger-item">
+                                <code>trg_tasks_after_insert</code>
+                                <span>Registra creación y actualiza contadores</span>
+                            </div>
+                            <div class="trigger-item">
+                                <code>trg_tasks_after_update</code>
+                                <span>Detecta tareas completadas</span>
+                            </div>
+                            <div class="trigger-item">
+                                <code>trg_tasks_after_delete</code>
+                                <span>Actualiza contadores al eliminar</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="audit-stats card">
+                        <h4>📈 Actividad Reciente</h4>
+                        <div class="activity-stats">
+                            <div class="activity-item">
+                                <span class="activity-count" id="insert-count">0</span>
+                                <span class="activity-label">Inserciones</span>
+                            </div>
+                            <div class="activity-item">
+                                <span class="activity-count" id="update-count">0</span>
+                                <span class="activity-label">Actualizaciones</span>
+                            </div>
+                            <div class="activity-item">
+                                <span class="activity-count" id="delete-count">0</span>
+                                <span class="activity-label">Eliminaciones</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Log de Auditoría -->
+                <div class="audit-container card">
+                    <div class="section-toolbar">
+                        <h3>📝 Historial de Operaciones</h3>
+                        <button id="refresh-audit" class="btn btn-secondary btn-small">
+                            🔄 Actualizar
+                        </button>
+                    </div>
+                    <div id="audit-log" class="audit-log">
+                        <div class="empty-state">
+                            <p>No hay registros de auditoría aún</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========== SECCIÓN DEMO SQL MEJORADA ========== -->
+            <section id="section-demo" class="content-section">
+                <div class="section-header">
+                    <h2>⚡ Demostración SQL Avanzado</h2>
+                    <p>Transacciones, ROLLBACK y operaciones complejas en MySQL</p>
+                </div>
+
+                <div class="demo-grid">
+                    <div class="demo-card card">
+                        <h4>🔄 Transacción con ROLLBACK</h4>
+                        <p class="demo-description">
+                            Elimina una categoría y todas sus tareas en una transacción atómica.
+                            Si algo falla, se ejecuta ROLLBACK automáticamente.
+                        </p>
+                        
+                        <div class="form-group">
+                            <label for="demo-category">Seleccionar Categoría:</label>
+                            <select id="demo-category">
+                                <option value="">-- Seleccionar --</option>
+                            </select>
+                        </div>
+
+                        <button id="demo-transaction" class="btn btn-warning">
+                            🚀 Ejecutar Transacción
+                        </button>
+
+                        <div id="demo-result" class="demo-result">
+                            <!-- Resultado de la transacción -->
+                        </div>
+                    </div>
+
+                    <div class="demo-card card">
+                        <h4>📚 Conceptos Demostrados</h4>
+                        <ul class="concept-list">
+                            <li class="concept-item">
+                                <span class="concept-icon">✅</span>
+                                <div>
+                                    <strong>CRUD Completo</strong>
+                                    <span>Create, Read, Update, Delete</span>
+                                </div>
+                            </li>
+                            <li class="concept-item">
+                                <span class="concept-icon">🔔</span>
+                                <div>
+                                    <strong>Triggers Automáticos</strong>
+                                    <span>Lógica de BD automática</span>
+                                </div>
+                            </li>
+                            <li class="concept-item">
+                                <span class="concept-icon">🔄</span>
+                                <div>
+                                    <strong>Transacciones</strong>
+                                    <span>START, COMMIT, ROLLBACK</span>
+                                </div>
+                            </li>
+                            <li class="concept-item">
+                                <span class="concept-icon">🔗</span>
+                                <div>
+                                    <strong>Foreign Keys</strong>
+                                    <span>Integridad referencial</span>
+                                </div>
+                            </li>
+                            <li class="concept-item">
+                                <span class="concept-icon">⚡</span>
+                                <div>
+                                    <strong>Índices Optimizados</strong>
+                                    <span>Mejor rendimiento</span>
+                                </div>
+                            </li>
+                            <li class="concept-item">
+                                <span class="concept-icon">🔌</span>
+                                <div>
+                                    <strong>Pool de Conexiones</strong>
+                                    <span>Conexiones eficientes</span>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="demo-card card">
+                        <h4>🔍 Información de MySQL</h4>
+                        <div class="mysql-info">
+                            <div class="info-row">
+                                <span class="info-label">Host:</span>
+                                <span class="info-value" id="mysql-host">localhost</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Base de datos:</span>
+                                <span class="info-value" id="mysql-database">organizador_tareas</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Tablas:</span>
+                                <span class="info-value" id="mysql-tables">3</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Triggers:</span>
+                                <span class="info-value" id="mysql-triggers">3</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Conexión:</span>
+                                <span class="info-value" id="mysql-connection">Activa</span>
+                            </div>
+                        </div>
+                        <button id="test-connection" class="btn btn-secondary btn-small">
+                            🔍 Probar Conexión
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Console Panel Mejorado -->
+        <aside class="console-panel">
+            <div class="console-header">
+                <div class="console-title">
+                    <h4>🖥️ Consola MySQL</h4>
+                    <span class="console-subtitle">Operaciones en tiempo real</span>
+                </div>
+                <div class="console-controls">
+                    <button id="clear-console" class="btn-console">🗑️</button>
+                    <button id="toggle-console" class="btn-console">📋</button>
+                </div>
+            </div>
+            <div id="console-output" class="console-output">
+                <div class="console-entry system">
+                    <span class="timestamp">[00:00:00]</span>
+                    <span class="message">🚀 Sistema iniciado. Conectando a MySQL...</span>
+                </div>
+            </div>
+            <div class="console-footer">
+                <div class="connection-status" id="console-status">
+                    <div class="status-dot connecting"></div>
+                    <span>Conectando a MySQL...</span>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>

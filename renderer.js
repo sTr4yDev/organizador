@@ -662,6 +662,24 @@ document.getElementById('refresh-audit')?.addEventListener('click', async () => 
     await loadAuditLog();
 });
 
+// ==================== DARK MODE TOGGLE ====================
+const themeToggleBtn = document.getElementById('theme-toggle-btn');
+const currentTheme = localStorage.getItem('theme') || 'light';
+
+// Aplicar tema guardado
+document.documentElement.setAttribute('data-theme', currentTheme);
+
+// Toggle al hacer click
+themeToggleBtn?.addEventListener('click', () => {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    
+    addConsoleEntry(`🎨 Tema cambiado a: ${newTheme}`, 'system');
+});
+
 // Inicializar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', initializeApp);
 

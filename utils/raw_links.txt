@@ -1,6 +1,6 @@
-# RAW LINKS — Actualizado 2025-11-20T06:13:12.601Z
+# RAW LINKS — Actualizado 2025-11-20T15:01:52.694Z
 # Repositorio: sTr4yDev/organizador
-# Commit: 78703dad28e9d2138c74f0238bb11d213ef81281
+# Commit: 3c5a1a9dfcc680af04fa22cd24b3d0f8b92e0179
 
 ========================= BACKEND LINKS =========================
 https://raw.githubusercontent.com/sTr4yDev/organizador/main/config.js
@@ -17,7 +17,7 @@ https://raw.githubusercontent.com/sTr4yDev/organizador/main/test.js
 https://raw.githubusercontent.com/sTr4yDev/organizador/main/utils/links.js
 
 ========================= DOCS LINKS =========================
-
+https://raw.githubusercontent.com/sTr4yDev/organizador/main/utils/raw_links.txt
 
 ========================= OTROS =========================
 https://raw.githubusercontent.com/sTr4yDev/organizador/main/.gitignore
